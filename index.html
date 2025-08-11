@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bid & Prove Game</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f4f8;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: white;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    h1 {
+      color: #333;
+    }
+    .team {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Welcome to Bid & Prove!</h1>
+  <div id="playerNameSection">
+    <input type="text" id="playerName" placeholder="Enter your name" />
+    <button id="submitNameButton">Submit Name</button>
+  </div>
+
+  <div id="gameRoomSection" style="display:none;">
+    <p>Your Name: <span id="displayPlayerName"></span></p>
+    <button id="createRoomButton">Create Room</button>
+    <button id="joinRoomButton">Join Room</button>
+  </div>
+
+  <div id="roomControls" style="display:none;">
+    <h2>Room: <span id="roomId"></span></h2>
+    <p>Players: <span id="playerList"></span></p>
+    <button id="startGameButton">Start Game</button>
+  </div>
+
+  <div id="teamControls" style="display:none;">
+    <h3>Select Team Mode:</h3>
+    <button id="manualTeamButton">Manual Team Sorting</button>
+    <button id="randomTeamButton">Random Team Sorting</button>
+  </div>
+</div>
+
+<script>
+// Firebase Configuration and Initialization
+const firebaseConfig = {
+  apiKey: "AIzaSyAEqutXCO5OZD6VU_ohaBxNfh7G8Q6PEy0",
+  authDomain: "nomercy-8269a.firebaseapp.com",
+  databaseURL: "https://nomercy-8269a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "nomercy-8269a",
+  storageBucket: "nomercy-8269a.firebasestorage.app",
+  messagingSenderId: "349047620790",
+  appId: "1:349047620790:web:3206ff81cb7f5413d29217",
+  measurementId: "G-1WX7CWBFGF"
+};
+
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Game Controls
+let roomId = null;
+let playerName = null;
+
+// Step 1: Submit player name
+document.getElementById('submitNameButton').addEventListener('click', () => {
+  playerName = document.getElementById('playerName').value;
+  if (playerName) {
+    document.getElementById('displayPlayerName').innerText = playerName;
+    document.getElementById('playerNameSection').style.display = 'none';
+    document.getElementById('gameRoomSection').style.display = 'block';
+  } else {
+    alert('Please enter your name!');
+  }
+});
+
+// Step 2: Create a room
+document.getElementById('createRoomButton').addEventListener('click', () => {
+  roomId = generateRoomId();
+  document.getElementById('roomId').innerText = roomId;
+  firebase.database().ref('rooms/' + roomId).set({
+    roomId: roomId,
+    players: [playerName],
+    gameStarted: false,
+    teams: [],
+  });
+
+  document.getElementById('roomControls').style.display = 'block';
+  document.getElementById('teamControls').style.display = 'block';
+});
+
+// Step 3: Join a room
+document.getElementById('joinRoomButton').addEventListener('click', () => {
+  const inputRoomId = prompt("Enter Room ID:");
+  if (inputRoomId) {
+    roomId = inputRoomId;
+    document.getElementById('roomId').innerText = roomId;
+
+    firebase.database().ref('rooms/' + roomId).once('value').then((snapshot) => {
+      if (snapshot.exists()) {
+        const players = snapshot.val().players;
+        if (players.length < 4) {  // Limit of 4 players per room
+          players.push(playerName);
+          firebase.database().ref('rooms/' + roomId).update({
+            players: players,
+          });
+
+          document.getElementById('roomControls').style.display = 'block';
+          document.getElementById('teamControls').style.display = 'block';
+        } else {
+          alert('Room is full!');
+        }
+      } else {
+        alert('Room not found');
+      }
+    });
+  }
+});
+
+// Step 4: Start the game
+document.getElementById('startGameButton').addEventListener('click', () => {
+  firebase.database().ref('rooms/' + roomId).update({
+    gameStarted: true,
+  });
+
+  alert('Game Started! Good luck!');
+});
+
+// Team Sorting
+document.getElementById('manualTeamButton').addEventListener('click', () => {
+  alert("Manual team sorting is selected.");
+  // Add logic to manually assign players to teams
+});
+
+document.getElementById('randomTeamButton').addEventListener('click', () => {
+  alert("Random team sorting is selected.");
+  // Add logic to randomly assign players to teams
+});
+
+// Generate Room ID
+function generateRoomId() {
+  return Math.random().toString(36).substr(2, 9);
+}
+
+// Update player list in room
+firebase.database().ref('rooms/' + roomId + '/players').on('value', (snapshot) => {
+  const players = snapshot.val();
+  document.getElementById('playerList').innerText = players.join(', ');
+});
+</script>
+
+</body>
+</html>
