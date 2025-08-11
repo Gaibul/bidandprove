@@ -47,13 +47,20 @@
 
 <div class="container">
   <h1>Welcome to Bid & Prove!</h1>
-  <p>Create a room or join an existing one.</p>
+  <div id="playerNameSection">
+    <input type="text" id="playerName" placeholder="Enter your name" />
+    <button id="submitNameButton">Submit Name</button>
+  </div>
 
-  <button id="createRoomButton">Create Room</button>
-  <button id="joinRoomButton">Join Room</button>
+  <div id="gameRoomSection" style="display:none;">
+    <p>Your Name: <span id="displayPlayerName"></span></p>
+    <button id="createRoomButton">Create Room</button>
+    <button id="joinRoomButton">Join Room</button>
+  </div>
 
   <div id="roomControls" style="display:none;">
     <h2>Room: <span id="roomId"></span></h2>
+    <p>Players: <span id="playerList"></span></p>
     <button id="startGameButton">Start Game</button>
   </div>
 
@@ -83,14 +90,27 @@ const db = firebase.database();
 
 // Game Controls
 let roomId = null;
+let playerName = null;
 
-// Create a Room
+// Step 1: Submit player name
+document.getElementById('submitNameButton').addEventListener('click', () => {
+  playerName = document.getElementById('playerName').value;
+  if (playerName) {
+    document.getElementById('displayPlayerName').innerText = playerName;
+    document.getElementById('playerNameSection').style.display = 'none';
+    document.getElementById('gameRoomSection').style.display = 'block';
+  } else {
+    alert('Please enter your name!');
+  }
+});
+
+// Step 2: Create a room
 document.getElementById('createRoomButton').addEventListener('click', () => {
   roomId = generateRoomId();
   document.getElementById('roomId').innerText = roomId;
   firebase.database().ref('rooms/' + roomId).set({
     roomId: roomId,
-    players: [],
+    players: [playerName],
     gameStarted: false,
     teams: [],
   });
@@ -99,18 +119,27 @@ document.getElementById('createRoomButton').addEventListener('click', () => {
   document.getElementById('teamControls').style.display = 'block';
 });
 
-// Join an Existing Room
+// Step 3: Join a room
 document.getElementById('joinRoomButton').addEventListener('click', () => {
   const inputRoomId = prompt("Enter Room ID:");
   if (inputRoomId) {
     roomId = inputRoomId;
     document.getElementById('roomId').innerText = roomId;
 
-    // Check if room exists
     firebase.database().ref('rooms/' + roomId).once('value').then((snapshot) => {
       if (snapshot.exists()) {
-        document.getElementById('roomControls').style.display = 'block';
-        document.getElementById('teamControls').style.display = 'block';
+        const players = snapshot.val().players;
+        if (players.length < 4) {  // Limit of 4 players per room
+          players.push(playerName);
+          firebase.database().ref('rooms/' + roomId).update({
+            players: players,
+          });
+
+          document.getElementById('roomControls').style.display = 'block';
+          document.getElementById('teamControls').style.display = 'block';
+        } else {
+          alert('Room is full!');
+        }
       } else {
         alert('Room not found');
       }
@@ -118,7 +147,7 @@ document.getElementById('joinRoomButton').addEventListener('click', () => {
   }
 });
 
-// Start Game
+// Step 4: Start the game
 document.getElementById('startGameButton').addEventListener('click', () => {
   firebase.database().ref('rooms/' + roomId).update({
     gameStarted: true,
@@ -142,6 +171,12 @@ document.getElementById('randomTeamButton').addEventListener('click', () => {
 function generateRoomId() {
   return Math.random().toString(36).substr(2, 9);
 }
+
+// Update player list in room
+firebase.database().ref('rooms/' + roomId + '/players').on('value', (snapshot) => {
+  const players = snapshot.val();
+  document.getElementById('playerList').innerText = players.join(', ');
+});
 </script>
 
 </body>
